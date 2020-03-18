@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning IndexDB</title>
+</head>
+<body>
+    <script src="js/app/models/Negociacao.js"></script>
+    <script>
+        
+        var connection;
+        // open(p1,p2) - p1 = DatabaseName | p2 = version ()
+        var openRequest = window.indexedDB.open('aluraframe', 4);
+
+        // Working with a path of events - TRIAD OF EVENTS (on upgrade needed / on success / on error)
+        
+        openRequest.onupgradeneeded = event => { // Create or changes a existent database
+
+            console.log('Create or changes a existent database');
+
+            let myConnection = event.target.result;
+
+            if(myConnection.objectStoreNames.contains('negociacoes')) {
+                myConnection.deleteObjectStore('negociacoes'); // It's needed to add a new negotiation
+            }
+
+            myConnection.createObjectStore('negociacoes', { autoIncrement: true });
+        }; 
+
+        openRequest.onsuccess = event =>  {
+
+            console.log('Connection has been estabilished successful');
+
+            connection = event.target.result; // = IndexedDB
+        };
+
+        openRequest.onerror = event => {
+
+            console.log(event.target.error);
+        };
+
+        function add(){
+            // Transaction to save inside your ObjectStore - you can read&write
+            let transaction = connection.transaction(['negociacoes'], 'readwrite');
+            // Obtaining your ObjectStore
+            let store = transaction.objectStore('negociacoes');
+            // Creating and storing a new Negotiation
+            let negociacao = new Negociacao(new Date(), 1, 200);
+            let request = store.add(negociacao);
+                request.onsuccess = event => {
+                    console.log('Negociação incluída com sucesso');
+                };
+                request.onerror = event => {
+                    console.log('Não foi possível incluir a negociação');
+                };
+        };
+
+        function listaTodos(){
+
+            let transaction = connection.transaction(['negociacoes'], 'readwrite');
+            let store = transaction.objectStore('negociacoes');
+            
+            // To iterate through your store (objectStore('negociacoes')) - needs a cursor
+            // A Pointer is a type of data which stores a local place in your memory with an address
+            let cursor = store.openCursor();
+
+            let negociacoes = [];
+
+            cursor.onsuccess = event => {
+
+                let atual = event.target.result; // It's a pointer
+                if(atual){
+                    
+                    let dado = atual.value;
+                    
+                    negociacoes.push(new Negociacao(dado._data, dado._quantidade, dado._valor));
+                    // Needed to keep iterating through your objectStore
+                    atual.continue();
+
+                } else {
+                    console.log(negociacoes);
+                }
+            };
+
+            cursor.onerror = event => {
+
+                console.log(event.target.error.name);
+            };
+        }
+
+
+    </script>
+</body>
+</html>
